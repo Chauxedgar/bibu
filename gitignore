@@ -1,0 +1,21 @@
+# ─── Docker ───────────────────────────────
+# No subir datos persistentes de la BD
+db_data/
+
+# ─── PHP ──────────────────────────────────
+# Dependencias de Composer si las usas en el futuro
+src/vendor/
+
+# ─── Entornos ─────────────────────────────
+.env
+.env.local
+
+# ─── Sistemas operativos ──────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Editores ─────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user

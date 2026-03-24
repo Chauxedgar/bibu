@@ -1,5 +1,5 @@
 <?php
-$host = 'localhost';
+$host = 'db';
 $user = 'nuevo'; 
 $password = 'nuevo123'; 
 $database = 'crud_clientes';  
