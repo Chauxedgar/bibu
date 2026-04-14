@@ -10,17 +10,18 @@ services:
     container_name: crud_clientes_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root1234
-      MYSQL_DATABASE: crud_clientes
-      MYSQL_USER: nuevo
-      MYSQL_PASSWORD: nuevo123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} #APLICAR VARIABLE DE ENTORNO PARA MEJORAR LA SEGURIDAD
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-unuevo", "-pnuevo123"]
+      test: >
+        mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD}
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,7 +38,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./src:/var/www/html
+      - ./src:/var/www/html #CAMBIAR PARA MEJORAR LA SEGURIDAD: solo montar lo necesario, no todo el src
     depends_on:
       db:
         condition: service_healthy
@@ -59,12 +60,12 @@ services:
     volumes:
       - ./django_api:/app     # hot-reload: cambios en código se reflejan al instante
     environment:
-      - DB_HOST=db
-      - DB_NAME=crud_clientes
-      - DB_USER=nuevo
-      - DB_PASSWORD=nuevo123
-      - DB_PORT=3306
-      - DEBUG=True
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=${DB_PORT}
+      - DEBUG=${DEBUG}
     depends_on:
       db:
         condition: service_healthy
@@ -84,9 +85,9 @@ services:
     ports:
       - "8081:80"
     environment:
-      PMA_HOST: db
-      PMA_USER: nuevo
-      PMA_PASSWORD: nuevo123
+      PMA_HOST: ${PMA_HOST}
+      PMA_USER: ${PMA_USER}
+      PMA_PASSWORD: ${PMA_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
