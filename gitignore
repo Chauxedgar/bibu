@@ -9,6 +9,7 @@ src/vendor/
 # ─── Entornos ─────────────────────────────
 .env
 .env.local
+env/
 
 # ─── Sistemas operativos ──────────────────
 .DS_Store
