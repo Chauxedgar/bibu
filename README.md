@@ -3,7 +3,7 @@
 ## Estructura de carpetas
 
 ```
-tu-proyecto/
+udenar-php/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── db/

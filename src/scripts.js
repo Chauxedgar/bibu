@@ -1,6 +1,9 @@
 // ============================================================
 //  scripts.js  —  CRUD Clientes
+//  API: Django REST Framework en http://localhost:8000/api/
 // ============================================================
+
+const API = 'http://localhost:8000/api';
 
 document.addEventListener('DOMContentLoaded', function () {
     cargarClientes();
@@ -39,10 +42,11 @@ function cerrarModal() {
 
 // ------------------------------------------------------------
 // LIBROS — llenar el <select>
+// La API Django devuelve: {idlibros, titulo, autor, total_clientes}
 // ------------------------------------------------------------
 
 function cargarLibros() {
-    return fetch('api.php?tabla=libros')
+    return fetch(`${API}/libros/`)
         .then(res => res.json())
         .then(libros => {
             const select = document.getElementById('idlibros');
@@ -60,10 +64,12 @@ function cargarLibros() {
 
 // ------------------------------------------------------------
 // CLIENTES — Leer
+// La API Django devuelve: {id, name, email, phone_number,
+//                          address, libro: {idlibros, titulo, autor}}
 // ------------------------------------------------------------
 
 function cargarClientes() {
-    fetch('api.php')
+    fetch(`${API}/clientes/`)
         .then(res => res.json())
         .then(data => renderizarTabla(data))
         .catch(() => mostrarMensaje('Error al cargar clientes.', 'danger'));
@@ -73,13 +79,13 @@ function buscarClientes() {
     const termino = document.getElementById('buscarInput').value.trim().toLowerCase();
     if (!termino) { cargarClientes(); return; }
 
-    fetch('api.php')
+    fetch(`${API}/clientes/`)
         .then(res => res.json())
         .then(clientes => {
             const filtrados = clientes.filter(c =>
-                (c.name && c.name.toLowerCase().includes(termino)) ||
-                (c.email && c.email.toLowerCase().includes(termino)) ||
-                (c.phone_number && c.phone_number.includes(termino)) ||
+                (c.name    && c.name.toLowerCase().includes(termino))    ||
+                (c.email   && c.email.toLowerCase().includes(termino))   ||
+                (c.phone_number && c.phone_number.includes(termino))     ||
                 (c.address && c.address.toLowerCase().includes(termino))
             );
             renderizarTabla(filtrados);
@@ -103,8 +109,10 @@ function renderizarTabla(clientes) {
     }
 
     clientes.forEach(c => {
-        const libroTexto = c.titulo
-            ? `<span class="badge bg-secondary">${escapeHtml(c.titulo)}</span>`
+        // Django devuelve el libro como objeto anidado: c.libro.titulo
+        // El api.php antiguo lo devolvía plano: c.titulo
+        const libroTexto = c.libro && c.libro.titulo
+            ? `<span class="badge bg-secondary">${escapeHtml(c.libro.titulo)}</span>`
             : '<span class="text-muted">—</span>';
 
         tbody.innerHTML += `
@@ -147,10 +155,11 @@ function abrirModalAgregar() {
 
 // ------------------------------------------------------------
 // MODAL — Editar
+// La API Django devuelve el libro anidado en c.libro
 // ------------------------------------------------------------
 
 function editarCliente(id) {
-    fetch(`api.php?id=${id}`)
+    fetch(`${API}/clientes/${id}/`)
         .then(res => res.json())
         .then(cliente => {
             document.getElementById('modalTitulo').textContent = '✏️ Editar Cliente';
@@ -164,7 +173,9 @@ function editarCliente(id) {
             document.getElementById('address').value = cliente.address || '';
 
             cargarLibros().then(() => {
-                document.getElementById('idlibros').value = cliente.idlibros || '';
+                // Django devuelve idlibros dentro del objeto libro anidado
+                const idlibros = cliente.libro ? cliente.libro.idlibros : '';
+                document.getElementById('idlibros').value = idlibros;
                 abrirModal();
             });
         })
@@ -172,7 +183,8 @@ function editarCliente(id) {
 }
 
 // ------------------------------------------------------------
-// GUARDAR
+// GUARDAR — POST (crear) y PUT (actualizar)
+// Django espera JSON en ambos casos con phone_number (no phone)
 // ------------------------------------------------------------
 
 function guardarCliente() {
@@ -191,31 +203,34 @@ function guardarCliente() {
 
     const esEdicion = idOculto !== '';
 
+    // Body JSON — Django usa "phone_number", no "phone"
+    const body = {
+        name:         nombre,
+        email:        email,
+        phone_number: telefono,
+        address:      direccion,
+        idlibros:     idlibros ? parseInt(idlibros) : null
+    };
+
     if (!esEdicion) {
-        fetch('api.php', {
-            method: 'POST',
+        // POST — crear cliente, incluir id en el body
+        body.id = parseInt(idCampo);
+
+        fetch(`${API}/clientes/`, {
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: idCampo, name: nombre, email: email,
-                phone: telefono, address: direccion,
-                idlibros: idlibros || null
-            })
+            body:    JSON.stringify(body)
         })
         .then(res => res.json())
         .then(data => manejarRespuesta(data))
         .catch(() => mostrarMensaje('Error de conexión.', 'danger'));
 
     } else {
-        const formData = new URLSearchParams({
-            id: idOculto, name: nombre, email: email,
-            phone: telefono, address: direccion,
-            idlibros: idlibros || ''
-        });
-
-        fetch(`api.php?id=${idOculto}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
+        // PUT — actualizar cliente, el id va en la URL
+        fetch(`${API}/clientes/${idOculto}/`, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(body)
         })
         .then(res => res.json())
         .then(data => manejarRespuesta(data))
@@ -229,7 +244,9 @@ function manejarRespuesta(data) {
         cerrarModal();
         cargarClientes();
     } else {
-        mostrarMensaje(data.error || 'Error al guardar.', 'danger');
+        // Django devuelve errores de validación como objeto {campo: ["mensaje"]}
+        const errores = Object.values(data).flat().join(' ');
+        mostrarMensaje(errores || 'Error al guardar.', 'danger');
     }
 }
 
@@ -240,7 +257,7 @@ function manejarRespuesta(data) {
 function eliminarCliente(id) {
     if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
 
-    fetch(`api.php?id=${id}`, { method: 'DELETE' })
+    fetch(`${API}/clientes/${id}/`, { method: 'DELETE' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {

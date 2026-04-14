@@ -1,8 +1,8 @@
 <?php
-$host = "localhost";
-$usuario = "usuario_alimentos";
-$contrasena = "123456";
-$base_datos = "alimentosdb";
+$host = "db";
+$usuario = "nuevo";
+$contrasena = "nuevo123";
+$base_datos = "crud_clientes";
 
 $conn = new mysqli($host, $usuario, $contrasena, $base_datos);
 
